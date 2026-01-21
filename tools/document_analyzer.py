@@ -1,7 +1,6 @@
 """Document Analyzer Tool - Analisa documentos técnicos e extrai requisitos"""
-from crewai.tools import BaseToolfrom typing import Type, Optional
-from typing import Type, Optional
-from pydantic import BaseModel, Field
+from crewai.tools import BaseTool
+from pydantic import BaseModel, Fieldfrom typing import Type, Optional
 import re
 
 class DocumentAnalyzerInput(BaseModel):
