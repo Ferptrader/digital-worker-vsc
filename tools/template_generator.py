@@ -19,7 +19,8 @@ class TemplateGenerator(BaseTool):
     )
     args_schema: Type[BaseModel] = TemplateGeneratorInput
     
-    def _run(self, protocol_type: str, system_data: str, output_path: str) -> str:
+    def _run(self, protocol_type: str, syste
+             m_data: str, output_path: str) -> str:
         """
         Gera protocolo a partir de template
         
