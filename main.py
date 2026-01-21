@@ -8,7 +8,7 @@ Conforme ANVISA RDC 658/2022, GAMP 5, 21 CFR Part 11
 import os
 from dotenv import load_dotenv
 from crewai import Agent, Task, Crew, Process
-from tools.browser_automation import BrowserTool
+# from tools.browser_automation import BrowserTool
 from tools.document_analyzer import DocumentAnalyzer
 from tools.template_generator import TemplateGenerator
 from tools.compliance_checker import ComplianceChecker
@@ -25,8 +25,7 @@ analista_tecnico = Agent(
     Conhece profundamente GAMP 5, RDC 658/2022, IN 134/2022, Guia 33 ANVISA e 21 CFR Part 11.
     Sua expertise está em categorizar sistemas (GAMP 3/4/5), realizar análise de risco (ICH Q9) 
     e mapear requisitos de usuário (URS) para especificações funcionais (FS).""",
-    tools=[BrowserTool(), DocumentAnalyzer()],
-    verbose=True,
+    tools=[DocumentAnalyzer()],    verbose=True,
     allow_delegation=False
 )
 
@@ -64,8 +63,7 @@ navegador_sistemas = Agent(
     Consegue acessar GED (Gestão Eletrônica de Documentos), LIMS (Laboratory Information Management System),
     ERP, SCADA, CDS (Chromatography Data System), BMS.
     Extrai evidências de configuração, logs de auditoria e executa testes automatizados de IQ/OQ/PQ.""",
-    tools=[BrowserTool()],
-    verbose=True,
+    tools=[],    verbose=True,
     allow_delegation=False
 )
 
