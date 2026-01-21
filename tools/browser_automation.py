@@ -1,5 +1,5 @@
 """Browser Automation Tool - Automatiza navegação em sistemas farmacêuticos""" 
-from crewai_tools import BaseTool
+# from crewai_tools import BaseTool
 from typing import Type, Optional, Any
 from pydantic import BaseModel, Field
 import time
