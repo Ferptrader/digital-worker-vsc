@@ -6,7 +6,7 @@ crewai-tools>=0.14.0
 
 # LLM Providers
 openai>=1.50.0
-anthrop ic>=0.39.0
+anthropic>=0.39.0
 
 # Browser Automation
 browser-use>=0.1.0
