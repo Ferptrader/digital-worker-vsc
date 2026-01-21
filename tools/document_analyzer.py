@@ -1,5 +1,5 @@
 """Document Analyzer Tool - Analisa documentos técnicos e extrai requisitos"""
-from crewai_tools import BaseTool
+from crewai.tools import BaseToolfrom typing import Type, Optional
 from typing import Type, Optional
 from pydantic import BaseModel, Field
 import re
