@@ -1,5 +1,5 @@
 """Template Generator Tool - Gera protocolos IQ/OQ/PQ a partir de templates"""
-from crewai.tools import BaseToolfrom typing import Type, Optional, Dict
+from crewai.tools import BaseTool from typing import Type, Optional, Dict
 from pydantic import BaseModel, Field
 from pathlib import Path
 import json
