@@ -1,5 +1,5 @@
 """Compliance Checker Tool - Valida conformidade regulatória VSC"""
-from crewai_tools import BaseTool
+from crewai.tools import BaseTool
 from typing import Type, Optional, List, Dict
 from pydantic import BaseModel, Field
 
