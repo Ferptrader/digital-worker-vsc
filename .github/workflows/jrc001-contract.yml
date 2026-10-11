@@ -12,11 +12,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Verify candidate contract invariants
-        run: python -m jrc001.test_contract
+        run: |
+          python -m jrc001.test_contract
+          python -m jrc001.test_guard
       - name: Retain machine-readable receipt
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: jrc001-contract-receipt
-          path: jrc001_contract_receipt.json
+          path: |
+            jrc001_contract_receipt.json
+            jrc001_guard_receipt.json
           if-no-files-found: warn
