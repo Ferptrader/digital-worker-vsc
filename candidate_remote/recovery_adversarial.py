@@ -29,12 +29,12 @@ def run():
         concurrent_db=root/"concurrent.sqlite"
         SQLiteReplayGuard(str(concurrent_db))
         def attempt(i):
-            return SQLiteReplayGuard(str(concurrent)).reserve("client","same-nonce",100+i)
+            return SQLiteReplayGuard(str(concurrent_db)).reserve("client","same-nonce",100+i)
         with concurrent.futures.ThreadPoolExecutor(max_workers=12) as executor:
             results=list(executor.map(attempt,range(24)))
         assert results.count(True)==1 and results.count(False)==23,results
         checks["concurrent_one_winner"]=True
-        assert not hasattr(SQLiteReplayGuard(str(concurrent)),"reconcile_external_effect")
+        assert not hasattr(SQLiteReplayGuard(str(concurrent_db)),"reconcile_external_effect")
         checks["no_external_effect_reconciliation"]=True
     result={"status":"ADVERSARIAL_CHARACTERIZATION_PASS","checks":checks,
             "critical_risks":{"IDEMP-01":"OPEN_CRITICAL","IA-02":"OPEN_CRITICAL"},
