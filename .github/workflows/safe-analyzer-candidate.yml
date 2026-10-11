@@ -1,0 +1,46 @@
+name: Safe Analyzer Candidate CI
+on:
+  push:
+    branches:
+      - sandbox/dwvsc-safe-analyzer-c002-20261011
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  synthetic-and-real-library:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install test dependencies
+        run: |
+          python -m pip install --disable-pip-version-check "crewai==1.15.27" "pydantic==2.12.5" "pypdf>=5.9.0" "python-docx>=1.1.0"
+      - name: Synthetic document regression
+        run: |
+          python -m unittest discover -s tests -p "test_safe_document_core.py" -v
+          python -m unittest discover -s tests -p "test_regression_extra.py" -v
+      - name: Real CrewAI-Pydantic integration smoke
+        env:
+          DWVSC_ALLOWED_ROOT: /tmp
+        run: |
+          python - <<'PY'
+          import json
+          import tempfile
+          from pathlib import Path
+          from tools.document_analyzer import DocumentAnalyzer
+          with tempfile.TemporaryDirectory() as td:
+              import os
+              os.environ["DWVSC_ALLOWED_ROOT"] = td
+              doc = Path(td) / "sample.txt"
+              doc.write_text("Synthetic audit trail requirement", encoding="utf-8")
+              tool = DocumentAnalyzer()
+              raw = tool._run(str(doc), "compliance")
+              result = json.loads(raw)
+              assert result["status"] == "EXTRACTED_UNVERIFIED", result
+              assert result["gxp_compliance"] == "NOT_VERIFIED", result
+              assert result["gxp_approval"] == "NOT_GRANTED", result
+              assert result["gxp_release"] == "NOT_GRANTED", result
+          PY
