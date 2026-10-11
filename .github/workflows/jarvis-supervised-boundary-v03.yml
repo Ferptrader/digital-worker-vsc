@@ -1,0 +1,35 @@
+name: JARVIS Supervised Boundary v0.3 Candidate CI
+on:
+  push:
+    branches:
+      - sandbox/jarvis-supervised-boundary-v03-20261011
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  supervised-boundary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact candidate commit
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Execute fail-closed contract regression
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m jrc001.test_contract
+          python -m jrc001.test_guard
+          python -m jrc001.test_supervised_boundary_candidate | tee jrc001_supervised_boundary_receipt.json
+      - name: Preserve machine-readable receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jrc001-supervised-boundary
+          path: |
+            jrc001_contract_receipt.json
+            jrc001_guard_receipt.json
+            jrc001_supervised_boundary_receipt.json
+          if-no-files-found: warn
+          retention-days: 14
