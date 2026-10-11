@@ -26,8 +26,8 @@ def run():
         shutil.copy2(snapshot,db2)
         assert SQLiteReplayGuard(str(db2)).reserve("client","nonce-rollback",5)
         checks["rollback_allows_replay"]=True
-        concurrent=root/"concurrent.sqlite"
-        SQLiteReplayGuard(str(concurrent))
+        concurrent_db=root/"concurrent.sqlite"
+        SQLiteReplayGuard(str(concurrent_db))
         def attempt(i):
             return SQLiteReplayGuard(str(concurrent)).reserve("client","same-nonce",100+i)
         with concurrent.futures.ThreadPoolExecutor(max_workers=12) as executor:
