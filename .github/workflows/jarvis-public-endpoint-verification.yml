@@ -1,0 +1,44 @@
+name: JARVIS Public Endpoint Verification
+on:
+  push:
+    branches: [sandbox/jarvis-remote-candidate-20261011]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  public-endpoint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Verify Render HTTP endpoint
+        run: |
+          python - <<'PY'
+          import json,urllib.request,hashlib
+          from pathlib import Path
+          url="https://jarvis-vsc-isolated-candidate.onrender.com/api/probe"
+          receipt={"url":url,"status":"NOT_VERIFIED"}
+          try:
+              with urllib.request.urlopen(url,timeout=75) as response:
+                  raw=response.read(20000)
+                  body=json.loads(raw)
+                  receipt.update({"http_status":response.status,"body":body,"http_body_sha256":hashlib.sha256(raw).hexdigest()})
+                  assert response.status==200
+                  assert body["status"]=="PASS"
+                  assert body["scope"]=="SYNTHETIC_EPHEMERAL_ONLY"
+                  assert body["jarvis_authoritative_connected"] is False
+                  assert body["gxp_authority"] is False
+                  assert len(body["document_sha256"])==64
+                  assert len(body["response_sha256"])==64
+                  receipt["status"]="PASS_SYNTHETIC_ONLY"
+          except Exception as error:
+              receipt["error"]=str(error)[:350]
+          Path("jarvis_public_http_receipt.json").write_text(json.dumps(receipt,sort_keys=True,indent=2))
+          print("JARVIS_PUBLIC_HTTP_RECEIPT="+json.dumps(receipt,sort_keys=True))
+          assert receipt["status"]=="PASS_SYNTHETIC_ONLY"
+          PY
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jarvis-public-http-receipt
+          path: jarvis_public_http_receipt.json
