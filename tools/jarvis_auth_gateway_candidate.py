@@ -17,12 +17,12 @@ MAX_SKEW_SECONDS = 120
 class MemoryReplayGuard:
     def __init__(self):
         self._lock = threading.Lock()
-        self._seen: dict[str, int] = {}
+        self._seen: dict[tuple[str, str], int] = {}
 
     def reserve(self, identity: str, nonce: str, now: int) -> bool:
         with self._lock:
             self._seen = {k: v for k, v in self._seen.items() if v >= now - MAX_SKEW_SECONDS}
-            key = identity + ":" + nonce
+            key = (identity, nonce)
             if key in self._seen:
                 return False
             self._seen[key] = now
