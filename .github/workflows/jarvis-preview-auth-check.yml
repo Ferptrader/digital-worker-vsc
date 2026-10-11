@@ -1,0 +1,38 @@
+name: JARVIS Protected Preview HTTP Checks
+on:
+  push:
+    branches: [sandbox/jarvis-remote-candidate-20261011]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Check health and unauthorized access
+        run: |
+          python - <<'PY'
+          import json,urllib.request,urllib.error
+          from pathlib import Path
+          base="https://jarvis-vsc-isolated-candidate.onrender.com"
+          result={"checks":{}}
+          for name,path,expected in [("health","/api/health",200),("no_token","/api/probe",401),("wrong_token","/api/probe",401)]:
+              headers={"Authorization":"Bearer invalid-token"} if name=="wrong_token" else {}
+              try:
+                  with urllib.request.urlopen(urllib.request.Request(base+path,headers=headers),timeout=65) as r:
+                      status=r.status
+              except urllib.error.HTTPError as e:
+                  status=e.code
+              result["checks"][name]={"status":status,"expected":expected,"pass":status==expected}
+          result["overall"]="PASS" if all(v["pass"] for v in result["checks"].values()) else "FAIL"
+          Path("jarvis_auth_negative_receipt.json").write_text(json.dumps(result,indent=2))
+          print("JARVIS_AUTH_NEGATIVE_RECEIPT="+json.dumps(result))
+          assert result["overall"]=="PASS"
+          PY
+      - name: Preserve evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jarvis-auth-negative-receipt
+          path: jarvis_auth_negative_receipt.json
