@@ -7,6 +7,7 @@ on:
       - sandbox/jarvis-control-plane-c001-20261011
       - sandbox/jarvis-independent-anchor-c001-20261011
       - sandbox/jarvis-replay-key-hardening-20261011
+      - sandbox/jarvis-anchor-receipt-hardening-20261011
   workflow_dispatch:
 permissions:
   contents: read
@@ -34,6 +35,7 @@ jobs:
           python -m unittest discover -s tests -p "test_known_open_risk_db_delete.py" -v
           python -m unittest discover -s tests -p "test_independent_anchor_candidate.py" -v
           python -m unittest discover -s tests -p "test_replay_key_hardening.py" -v
+          python -m unittest discover -s tests -p "test_anchor_receipt_strict.py" -v
       - name: Real CrewAI-Pydantic integration smoke
         env:
           DWVSC_ALLOWED_ROOT: /tmp
