@@ -22,6 +22,7 @@ jobs:
         run: |
           python -m unittest discover -s tests -p "test_safe_document_core.py" -v
           python -m unittest discover -s tests -p "test_regression_extra.py" -v
+          python -m unittest discover -s tests -p "test_jarvis_handoff_candidate.py" -v
       - name: Real CrewAI-Pydantic integration smoke
         env:
           DWVSC_ALLOWED_ROOT: /tmp
