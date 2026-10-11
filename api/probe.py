@@ -1,6 +1,8 @@
 """Synthetic candidate health/probe endpoint. No user-controlled document paths."""
 from http.server import BaseHTTPRequestHandler
 import json
+import os
+import hmac
 import hashlib
 import tempfile
 import time
@@ -10,9 +12,30 @@ from tools.jarvis_auth_gateway_candidate import sign_request
 from tools.sqlite_replay_candidate import SQLiteReplayGuard
 
 class handler(BaseHTTPRequestHandler):
+    def _json(self, status, obj):
+        data=json.dumps(obj,sort_keys=True).encode()
+        self.send_response(status)
+        self.send_header("Content-Type","application/json")
+        self.send_header("Cache-Control","no-store")
+        self.send_header("Content-Length",str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
     def do_GET(self):
+        if self.path in ("/api/health", "/api/health/"):
+            self._json(200,{"status":"UP","scope":"CANDIDATE_SYNTHETIC_ONLY","gxp_authority":False})
+            return
         if self.path not in ("/api/probe", "/api/probe/"):
-            self.send_response(404); self.end_headers(); return
+            self._json(404,{"status":"NOT_FOUND"})
+            return
+        token=os.environ.get("JARVIS_PREVIEW_BEARER_TOKEN","")
+        supplied=self.headers.get("Authorization","")
+        if not token or len(token)<32:
+            self._json(503,{"status":"AUTH_NOT_CONFIGURED"})
+            return
+        if not hmac.compare_digest(supplied,"Bearer "+token):
+            self._json(401,{"status":"UNAUTHORIZED"})
+            return
         try:
             with tempfile.TemporaryDirectory() as td:
                 root = Path(td)
