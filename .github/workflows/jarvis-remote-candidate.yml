@@ -29,3 +29,13 @@ jobs:
           name: jarvis-http-receipt
           path: candidate_remote_http_receipt.json
           if-no-files-found: warn
+
+      - name: Adversarial replay and recovery characterization
+        run: python -m candidate_remote.recovery_adversarial
+      - name: Upload recovery receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jarvis-recovery-receipt
+          path: candidate_recovery_receipt.json
+          if-no-files-found: warn
