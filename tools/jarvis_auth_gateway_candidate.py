@@ -1,8 +1,7 @@
 """Standalone authenticated request boundary. Candidate only; not a deployed JARVIS runtime.
 
 HMAC authorizes a specific request signed by an out-of-band trusted caller.
-Nonce replay protection here is process-local and is NOT suitable for production
-multi-worker dispatch. No GxP authority is delegated to document contents.
+Replay protection requires an explicitly supplied durable guard; it remains\nNOT QUALIFIED without independent storage integrity and multi-host validation. No GxP authority is delegated to document contents.
 """
 from __future__ import annotations
 import hashlib
@@ -37,7 +36,7 @@ def sign_request(key: bytes, identity: str, timestamp: int, nonce: str, payload:
     return hmac.new(key, signing, hashlib.sha256).hexdigest()
 
 def process_authenticated(envelope: dict[str, Any], *, keys: dict[str, bytes],
-                          allowed_root: str, guard: MemoryReplayGuard,
+                          allowed_root: str, guard: Any,
                           clock: Callable[[], int] = lambda: int(time.time())) -> dict[str, Any]:
     denied = {"status":"NOT_VERIFIED","reason":"AUTHORIZATION_FAILED","execution_authorized":False,
               "gxp_compliance":"NOT_VERIFIED","gxp_approval":"NOT_GRANTED","gxp_release":"NOT_GRANTED"}
@@ -56,6 +55,10 @@ def process_authenticated(envelope: dict[str, Any], *, keys: dict[str, bytes],
         return denied
     if not hmac.compare_digest(expected,signature):
         return denied
-    if not guard.reserve(identity,nonce,clock()):
+    try:
+        reserved = guard.reserve(identity, nonce, clock())
+    except Exception:
+        return {**denied, "reason":"REPLAY_STORE_UNAVAILABLE"}
+    if not reserved:
         return {**denied,"reason":"REPLAY_REJECTED"}
     return handle_jarvis_request(payload,allowed_root=allowed_root)
