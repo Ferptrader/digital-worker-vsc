@@ -45,4 +45,23 @@ class Gateway(unittest.TestCase):
     def test_approval_claim_denied(self):
         p={**self.payload,"approve":True}
         self.assertEqual(self.run_env(self.env(payload=p,nonce="abcdefghijklmnop0003"))["reason"],"AUTHORITY_FIELDS_REJECTED")
+    def test_durable_store_across_instances(self):
+        from tools.sqlite_replay_candidate import SQLiteReplayGuard
+        from tools.jarvis_auth_gateway_candidate import process_authenticated
+        database=str(self.root/"replay.db")
+        e=self.env()
+        first=process_authenticated(e,keys=self.keys,allowed_root=str(self.root),
+                    guard=SQLiteReplayGuard(database),clock=lambda:self.now)
+        second=process_authenticated(e,keys=self.keys,allowed_root=str(self.root),
+                    guard=SQLiteReplayGuard(database),clock=lambda:self.now)
+        self.assertEqual(first["status"],"EXTRACTED_UNVERIFIED")
+        self.assertEqual(second["reason"],"REPLAY_REJECTED")
+    def test_store_exception_fails_closed(self):
+        class Broken:
+            def reserve(self,*args): raise OSError("simulated")
+        from tools.jarvis_auth_gateway_candidate import process_authenticated
+        r=process_authenticated(self.env(),keys=self.keys,allowed_root=str(self.root),
+                guard=Broken(),clock=lambda:self.now)
+        self.assertEqual(r["reason"],"REPLAY_STORE_UNAVAILABLE")
+        self.assertFalse(r["execution_authorized"])
 if __name__=="__main__":unittest.main()
