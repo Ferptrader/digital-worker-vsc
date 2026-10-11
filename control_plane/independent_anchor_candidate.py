@@ -37,6 +37,8 @@ class ExternalAnchorGuard:
             raise RuntimeError("INVALID_ANCHOR_RECEIPT")
         if receipt.identity != identity or receipt.nonce != nonce:
             raise RuntimeError("ANCHOR_RECEIPT_MISMATCH")
-        if type(receipt.accepted) is not bool:\n            raise RuntimeError("INVALID_ANCHOR_DECISION")\n        if not isinstance(receipt.anchor_version, str) or not isinstance(receipt.witness_id, str) or not receipt.anchor_version.strip() or not receipt.witness_id.strip():
+        if type(receipt.accepted) is not bool:
+            raise RuntimeError("INVALID_ANCHOR_DECISION")
+        if not isinstance(receipt.anchor_version, str) or not isinstance(receipt.witness_id, str) or not receipt.anchor_version.strip() or not receipt.witness_id.strip():
             raise RuntimeError("MISSING_ANCHOR_WITNESS")
         return receipt.accepted
