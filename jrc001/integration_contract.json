@@ -1,0 +1,46 @@
+{
+  "change_id": "JRC-001",
+  "schema_version": "1.0.0",
+  "state": "CANDIDATE_HOLD_NOT_QUALIFIED",
+  "baseline": {
+    "id": "JV8-BL-001",
+    "revision": "V8.1 Rev03.1",
+    "source": "LIBRARY_REFERENCE_ONLY",
+    "loaded_at_runtime": false
+  },
+  "component": {
+    "id": "JARVIS_CP_C001_UNQUALIFIED",
+    "role": "isolated_preview_control_plane",
+    "authoritative": false,
+    "endpoint": "/api/probe",
+    "health": "/api/health"
+  },
+  "interfaces": {
+    "transport": "HTTP",
+    "authentication": "Bearer preview token",
+    "workload": "synthetic_document_only",
+    "request_body_allowed": false,
+    "customer_data_allowed": false
+  },
+  "authority": {
+    "gxp_approval": false,
+    "gxp_release": false,
+    "gxp_signature": false,
+    "production_write": false,
+    "production_delete": false,
+    "shared_learning": false
+  },
+  "risks": {
+    "IDEMP-01": "OPEN_CRITICAL",
+    "IA-02": "OPEN_CRITICAL"
+  },
+  "acceptance": {
+    "positive_auth_local_startup": "PASS_RECORDED_20261011",
+    "negative_auth_external": "PASS_RECORDED_20261011",
+    "runtime_identity": "HOLD",
+    "idempotency": "HOLD",
+    "recovery": "HOLD",
+    "independent_validation": "HOLD"
+  },
+  "rule": "A passing synthetic preview is never evidence of authoritative JARVIS runtime identity or GxP qualification."
+}
