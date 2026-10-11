@@ -19,3 +19,13 @@ jobs:
         run: python -m pip install --disable-pip-version-check "pypdf>=5.9.0" "python-docx>=1.1.0" "crewai==1.15.27" "pydantic==2.12.5"
       - name: Execute authenticated Control Plane proof
         run: python -m candidate_remote.isolated_probe
+
+      - name: Exercise HTTP handler over loopback
+        run: python -m candidate_remote.http_probe_test
+      - name: Upload HTTP test receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jarvis-http-receipt
+          path: candidate_remote_http_receipt.json
+          if-no-files-found: warn
