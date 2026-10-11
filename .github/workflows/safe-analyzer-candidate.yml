@@ -54,3 +54,28 @@ jobs:
               assert result["gxp_approval"] == "NOT_GRANTED", result
               assert result["gxp_release"] == "NOT_GRANTED", result
           PY
+
+      - name: Operational remote synthetic extraction proof
+        run: |
+          python - <<'PY'
+          import json
+          import tempfile
+          from pathlib import Path
+          from tools.jarvis_handoff_candidate import handle_jarvis_request
+          with tempfile.TemporaryDirectory(prefix="jarvis-remote-") as td:
+              doc = Path(td) / "synthetic.txt"
+              doc.write_text("Synthetic VSC audit trail requirement with username and timestamp.", encoding="utf-8")
+              request = {"operation":"extract_document","document_path":str(doc),"analysis_type":"requirements"}
+              response = handle_jarvis_request(request, allowed_root=td)
+              assert response["status"] == "EXTRACTED_UNVERIFIED", response
+              assert response["gxp_approval"] == "NOT_GRANTED", response
+              assert response["gxp_release"] == "NOT_GRANTED", response
+              print("JARVIS_REMOTE_PROOF_RESULT="+json.dumps({
+                "remote_runtime": "GitHub Actions isolated runner",
+                "operation": request["operation"],
+                "status": response["status"],
+                "evidence": response["evidence"],
+                "gxp_approval": response["gxp_approval"],
+                "gxp_release": response["gxp_release"]
+              }, ensure_ascii=False, sort_keys=True))
+          PY
