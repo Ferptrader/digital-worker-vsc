@@ -5,6 +5,7 @@ on:
       - sandbox/dwvsc-safe-analyzer-c002-20261011
       - sandbox/jarvis-auth-gateway-c001-20261011
       - sandbox/jarvis-control-plane-c001-20261011
+      - sandbox/jarvis-independent-anchor-c001-20261011
   workflow_dispatch:
 permissions:
   contents: read
@@ -30,6 +31,7 @@ jobs:
           python -m unittest discover -s tests -p "test_control_plane_candidate.py" -v
           python -m unittest discover -s tests -p "test_control_plane_boundary_e2e.py" -v
           python -m unittest discover -s tests -p "test_known_open_risk_db_delete.py" -v
+          python -m unittest discover -s tests -p "test_independent_anchor_candidate.py" -v
       - name: Real CrewAI-Pydantic integration smoke
         env:
           DWVSC_ALLOWED_ROOT: /tmp
