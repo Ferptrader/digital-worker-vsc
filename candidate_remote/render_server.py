@@ -6,6 +6,7 @@ import urllib.error
 import urllib.request
 from http.server import ThreadingHTTPServer
 from api.probe import handler
+from jrc001.guard import verify_file
 
 def _get(url, token=None):
     headers={"Authorization":"Bearer "+token} if token else {}
@@ -16,6 +17,7 @@ def _get(url, token=None):
         return e.code,json.loads(e.read(16000))
 
 def main():
+    verify_file()
     port=int(os.environ.get("PORT","10000"))
     token=os.environ.get("JARVIS_PREVIEW_BEARER_TOKEN","")
     if len(token)<32:
