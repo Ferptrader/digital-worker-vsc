@@ -1,0 +1,51 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'JASAP C003 CANDIDATE - separate independently governed audit account; WORM is irreversible during retention'
+Resources:
+  IndependentWitnessBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+      ObjectLockEnabled: true
+      ObjectLockConfiguration:
+        ObjectLockEnabled: Enabled
+        Rule:
+          DefaultRetention:
+            Mode: COMPLIANCE
+            Days: 7
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      Tags:
+        - Key: GxPStatus
+          Value: 'LAB_ONLY_NOT_QUALIFIED'
+        - Key: Change
+          Value: 'JASAP-C003'
+  IndependentWitnessDenyDelete:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket:
+        Ref: IndependentWitnessBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyDeleteMarkerAndObjectVersion
+            Effect: Deny
+            Principal: '*'
+            Action:
+              - s3:DeleteObject
+              - s3:DeleteObjectVersion
+            Resource:
+              Fn::Sub: '${IndependentWitnessBucket.Arn}/*'
+Outputs:
+  BucketName:
+    Value:
+      Ref: IndependentWitnessBucket

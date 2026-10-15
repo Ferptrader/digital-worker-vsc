@@ -1,0 +1,29 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'JASAP C003 CANDIDATE - anchor account only; no Lambda and no production deployment'
+Resources:
+  ReservationTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+      DeletionProtectionEnabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+      Tags:
+        - Key: GxPStatus
+          Value: 'LAB_ONLY_NOT_QUALIFIED'
+        - Key: Change
+          Value: 'JASAP-C003'
+Outputs:
+  TableArn:
+    Value:
+      Fn::GetAtt: [ReservationTable, Arn]
