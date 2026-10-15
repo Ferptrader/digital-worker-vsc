@@ -52,6 +52,8 @@ class CloudLedger:
             if item["state"]["S"] != "WITNESSED":
                 return False
             key = item["witness_key"]["S"]
+            if key != f'witness/v1/{item["pk"]["S"]}.json':
+                return False
             version = item["witness_version"]["S"]
             expected_sha = item["witness_digest"]["S"]
             metadata = self.s3.head_object(Bucket=self.bucket, Key=key, VersionId=version,
@@ -87,9 +89,16 @@ class CloudLedger:
     def _verdict(self, item: dict | None, digest: str | None = None, identity: str | None = None) -> dict:
         if item is None:
             return {"decision": "HOLD", "reason": "MISSING_RESERVATION_AFTER_CONFLICT"}
-        if identity is not None and item.get("identity", {}).get("S") != identity:
+        # Malformed database values are untrusted and must not cause an
+        # uncontrolled exception or a false-positive duplicate/found result.
+        if not isinstance(item, dict) or not all(
+            isinstance(item.get(k), dict) and isinstance(item[k].get("S"), str)
+            for k in ("identity", "digest", "pk", "witness_key", "state")
+        ):
+            return {"decision": "HOLD", "reason": "RESERVATION_RECORD_INVALID"}
+        if identity is not None and item["identity"]["S"] != identity:
             return {"decision": "DENIED", "reason": "IDENTITY_MISMATCH"}
-        if digest is not None and item.get("digest", {}).get("S") != digest:
+        if digest is not None and item["digest"]["S"] != digest:
             return {"decision": "CONFLICT", "reason": "IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_DIGEST"}
         if not self._verify_witness(item):
             return {"decision": "HOLD", "reason": "WITNESS_NOT_VERIFIED"}
