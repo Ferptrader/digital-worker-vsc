@@ -1,0 +1,26 @@
+name: Atlas site public read-only health probe
+on:
+  push:
+    branches:
+      - sandbox/atlas-aws-operational-readiness-20261015
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  atlas_public_probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Read-only site reachability
+        run: python labs/atlas_site_readonly/probe.py --output evidence/atlas_public_probe.json
+      - name: Upload reachability evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-public-readonly-probe
+          path: evidence/atlas_public_probe.json
+          if-no-files-found: warn
