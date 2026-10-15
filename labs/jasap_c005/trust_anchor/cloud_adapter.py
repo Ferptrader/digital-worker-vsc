@@ -64,11 +64,23 @@ class CloudLedger:
             remote = self.s3.get_object(Bucket=self.bucket, Key=key, VersionId=version,
                                         ExpectedBucketOwner=self.expected_bucket_owner)
             data = remote["Body"].read()
-            return hashlib.sha256(data).hexdigest() == expected_sha and (
-                json.loads(data).get("pk") == item["pk"]["S"] and
-                json.loads(data).get("digest") == item["digest"]["S"] and
-                json.loads(data).get("identity") == item["identity"]["S"]
-            )
+            witness = json.loads(data)
+            if not isinstance(witness, dict):
+                return False
+            expected = {
+                "contract": "JASAP-C003-RESERVATION-v1",
+                "pk": item["pk"]["S"],
+                "tenant": item["tenant"]["S"],
+                "operation": item["operation"]["S"],
+                "request_id": item["request_id"]["S"],
+                "identity": item["identity"]["S"],
+                "digest": item["digest"]["S"],
+                "created_at": int(item["created_at"]["N"]),
+            }
+            return (hashlib.sha256(data).hexdigest() == expected_sha
+                    and witness == expected
+                    and item["pk"]["S"] == self._pk(
+                        expected["tenant"], expected["operation"], expected["request_id"]))
         except (KeyError, ValueError, TypeError, json.JSONDecodeError, ClientError, BotoCoreError, OSError):
             return False
 
