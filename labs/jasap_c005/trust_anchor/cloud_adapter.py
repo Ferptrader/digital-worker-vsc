@@ -92,6 +92,16 @@ class CloudLedger:
         if not isinstance(digest, str) or not HEX64.fullmatch(digest) or type(now) is not int:
             return {"decision": "DENIED", "reason": "INVALID_DIGEST_OR_TIME"}
         pk = self._pk(tenant, operation, request_id)
+        # Historical WORM evidence is a mandatory precondition even when the
+        # DynamoDB reservation has been deleted.  A missing/unavailable or
+        # incomplete S3 version listing must never become a fresh reservation.
+        # NOTE: this is a fail-closed laboratory gate, not an atomic
+        # cross-service transaction or proof against concurrent privileged
+        # tampering of both stores. Production still requires reconciliation
+        # and an independently enforced fencing/authorization boundary.
+        historical = self._status_without_db_row(pk)
+        if historical["decision"] != "NOT_FOUND":
+            return historical
         key = f"witness/v1/{pk}.json"  # one immutable version per reservation
         item = {"pk": av(pk), "tenant": av(tenant), "operation": av(operation),
                 "request_id": av(request_id), "identity": av(identity),
