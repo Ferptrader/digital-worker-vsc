@@ -18,6 +18,14 @@
 | [GitHub Actions 38813117571](https://github.com/Ferptrader/digital-worker-vsc/actions/runs/38813117571) | GET não autenticado ao site original recebeu HTTP 401 | autorização necessária; NÃO caracteriza indisponibilidade |
 | AWS `aws_preflight.py` | script read-only versionado, mas **sem execução real comprovada** neste parecer | IDs, IAM/STS, WORM, isolamento, PITR e políticas não verificados no ambiente real |
 
+## Verificação complementar dos possíveis runtimes (Vercel)
+
+- Pesquisa na Vercel encontrou o projeto `jarvis-python-isolated-20261011` com deployment de staging **READY**, ID `dpl_Cc1wQ7J5VQuhXGoy8Gs8xqPSr6iB`, ligado à branch `sandbox/jarvis-python-preview-fix-20261011`. O estado `READY` indica sucesso do deployment, **não** uma integração autenticada C005.
+- Outro deployment Vercel pronto do `jarvis-vsc-preview`, `dpl_GgLiVA6U4fwLS5zPjJZc6qQemQkx`, contém arquivo `src/api/probe.py` que responde HTTP 200 com o corpo fixo `JARVIS_ISOLATED_PROBE_OK`. Isto é diagnóstico de disponibilidade, **não runtime de agentes / DDB / S3 / gateway C005**.
+- A tentativa mais recente do projeto `jarvis-vsc-preview`, ID `dpl_nXBkJxz4SbHzhYiQVS51emHHdoPv`, terminou **ERROR**, código `missing_pages_app`, mensagem `npm run vercel-build exited with 1`. Branch `sandbox/jarvis-supervised-boundary-v03-20261011`; não utilizar esse deployment como evidência de integração aprovada.
+- O Atlas original está em ChatGPT Sites, não foi identificado como projeto Vercel gerenciável pela conexão atual. Assim, as implantações Vercel **não** devem substituir o site Atlas original.
+- **Decisão permanece NO-GO.** Não foram feitas mudanças nas configurações Vercel nem no projeto original Atlas durante esta inspeção.
+
 ## Gate regulatório e de segurança — NÃO ATENDIDO
 
 1. **IA-02 — OPEN / CRITICAL**: não há evidência independente de proteção de witness e âncora contra adulteração administrativa em infraestrutura AWS segregada, incluindo testes negativos IAM, delete marker e comprovação de retenção imutável.
