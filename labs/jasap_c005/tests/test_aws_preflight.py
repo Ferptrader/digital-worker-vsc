@@ -29,7 +29,13 @@ class AWSPreflightTests(unittest.TestCase):
             def describe_continuous_backups(self, **kw): return {'ContinuousBackupsDescription': {'PointInTimeRecoveryDescription': {'PointInTimeRecoveryStatus':'ENABLED'}}}
         class S3:
             def get_bucket_versioning(self, **kw):return {'Status':'Enabled'}
-            def get_object_lock_configuration(self, **kw): return {'ObjectLockConfiguration': {'ObjectLockEnabled':'Enabled'}}
+            def get_object_lock_configuration(self, **kw): return {'ObjectLockConfiguration': {'ObjectLockEnabled':'Enabled', 'Rule':{'DefaultRetention': {'Mode':'COMPLIANCE','Days':7}}}}
+            def list_object_versions(self, **kw): return {'IsTruncated':False, 'Versions':[]}
+            def get_bucket_policy(self, **kw):
+                import json
+                return {'Policy':json.dumps({'Statement':[{'Effect':'Deny','Principal':'*',
+                     'Action':['s3:DeleteObject','s3:DeleteObjectVersion'],
+                     'Resource':'arn:aws:s3:::b/*'}]})}
             def get_public_access_block(self, **kw):return {'PublicAccessBlockConfiguration':{x:True for x in ('BlockPublicAcls','IgnorePublicAcls','BlockPublicPolicy','RestrictPublicBuckets')}}
         class Session:
             def client(self,name):return {'sts':STS(), 'dynamodb':DDB(), 's3':S3()}[name]
