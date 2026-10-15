@@ -30,11 +30,14 @@ class CloudLedger:
     Runtime/agent MUST have access to neither bucket nor DynamoDB.
     """
     def __init__(self, dynamodb: Any, s3: Any, table_name: str, bucket: str,
-                 *, retention_days: int = 7):
+                 *, expected_bucket_owner: str, retention_days: int = 7):
+        if not (isinstance(expected_bucket_owner, str) and re.fullmatch(r"[0-9]{12}", expected_bucket_owner)):
+            raise ValueError("EXPECTED_BUCKET_OWNER_REQUIRED")
         if not table_name or not bucket or not 1 <= retention_days <= 3650:
             raise ValueError("INVALID_CONFIG")
         self.ddb, self.s3, self.table, self.bucket = dynamodb, s3, table_name, bucket
         self.retention_days = retention_days
+        self.expected_bucket_owner = expected_bucket_owner
 
     @staticmethod
     def _pk(tenant: str, operation: str, request_id: str) -> str:
@@ -51,13 +54,15 @@ class CloudLedger:
             key = item["witness_key"]["S"]
             version = item["witness_version"]["S"]
             expected_sha = item["witness_digest"]["S"]
-            metadata = self.s3.head_object(Bucket=self.bucket, Key=key, VersionId=version)
+            metadata = self.s3.head_object(Bucket=self.bucket, Key=key, VersionId=version,
+                                           ExpectedBucketOwner=self.expected_bucket_owner)
             if metadata.get("ObjectLockMode") != "COMPLIANCE":
                 return False
             end = metadata.get("ObjectLockRetainUntilDate")
             if end is None or end <= datetime.now(timezone.utc):
                 return False
-            remote = self.s3.get_object(Bucket=self.bucket, Key=key, VersionId=version)
+            remote = self.s3.get_object(Bucket=self.bucket, Key=key, VersionId=version,
+                                        ExpectedBucketOwner=self.expected_bucket_owner)
             data = remote["Body"].read()
             return hashlib.sha256(data).hexdigest() == expected_sha and (
                 json.loads(data).get("pk") == item["pk"]["S"] and
@@ -113,6 +118,7 @@ class CloudLedger:
         expires = datetime.now(timezone.utc) + timedelta(days=self.retention_days)
         try:
             put = self.s3.put_object(Bucket=self.bucket, Key=key, Body=evidence,
+                     ExpectedBucketOwner=self.expected_bucket_owner,
                      ContentType="application/json", ServerSideEncryption="AES256",
                      ObjectLockMode="COMPLIANCE", ObjectLockRetainUntilDate=expires,
                      IfNoneMatch="*", ContentMD5=base64.b64encode(hashlib.md5(evidence).digest()).decode("ascii"))
@@ -120,7 +126,8 @@ class CloudLedger:
             if not isinstance(version, str) or not version:
                 return {"decision": "HOLD", "reason": "WITNESS_VERSION_MISSING"}
             # Confirm version-specific retention before accepting it.
-            h = self.s3.head_object(Bucket=self.bucket, Key=key, VersionId=version)
+            h = self.s3.head_object(Bucket=self.bucket, Key=key, VersionId=version,
+                                    ExpectedBucketOwner=self.expected_bucket_owner)
             if h.get("ObjectLockMode") != "COMPLIANCE" or h.get("ObjectLockRetainUntilDate") is None or h["ObjectLockRetainUntilDate"] <= datetime.now(timezone.utc):
                 return {"decision": "HOLD", "reason": "WORM_RETENTION_NOT_PROVEN"}
             self.ddb.update_item(TableName=self.table, Key={"pk": av(pk)},
@@ -138,6 +145,27 @@ class CloudLedger:
         except (ClientError, BotoCoreError, OSError, ValueError, TypeError):
             return {"decision": "HOLD", "reason": "WITNESS_OR_FINALIZATION_FAILED"}
 
+    def _status_without_db_row(self, pk: str) -> dict:
+        """Do not equate deleted reservation with unused identifier.
+
+        Inspect the exact S3 key's historical versions AND delete markers.
+        An ambiguous/error/truncated listing is always HOLD. This cannot
+        guarantee recovery against an administrator controlling both stores.
+        """
+        key = f"witness/v1/{pk}.json"
+        try:
+            result = self.s3.list_object_versions(
+                Bucket=self.bucket, Prefix=key, MaxKeys=1000,
+                ExpectedBucketOwner=self.expected_bucket_owner)
+            if result.get("IsTruncated") is not False:
+                return {"decision": "HOLD", "reason": "WITNESS_HISTORY_INCOMPLETE"}
+            for record in result.get("Versions", []) + result.get("DeleteMarkers", []):
+                if record.get("Key") == key:
+                    return {"decision": "HOLD", "reason": "ORPHAN_WITNESS_REQUIRES_RECONCILIATION"}
+            return {"decision": "NOT_FOUND"}
+        except (ClientError, BotoCoreError, OSError, ValueError, KeyError, TypeError):
+            return {"decision": "HOLD", "reason": "WITNESS_HISTORY_UNAVAILABLE"}
+
     def status(self, tenant: str, operation: str, request_id: str, identity: str | None = None) -> dict:
         if not isinstance(identity, str) or not SAFE_ID.fullmatch(identity):
             return {"decision": "DENIED", "reason": "IDENTITY_REQUIRED"}
@@ -146,7 +174,7 @@ class CloudLedger:
         try:
             item = self._get(self._pk(tenant, operation, request_id))
             if item is None:
-                return {"decision": "NOT_FOUND"}
+                return self._status_without_db_row(self._pk(tenant, operation, request_id))
             return self._verdict(item, identity=identity)
         except (ClientError, BotoCoreError, OSError):
             return {"decision": "HOLD", "reason": "STATUS_UNAVAILABLE"}
