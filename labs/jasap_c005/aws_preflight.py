@@ -47,6 +47,31 @@ def inspect(session, *, table: str, bucket: str, anchor_account: str, witness_ac
         lock = s3.get_object_lock_configuration(**owner)
         configuration = lock.get("ObjectLockConfiguration", {})
         checks["witness_object_lock"] = "PASS" if configuration.get("ObjectLockEnabled") == "Enabled" else "FAIL"
+        # Enabled alone is insufficient: enforce default immutable compliance mode.
+        rule = configuration.get("Rule", {}).get("DefaultRetention", {})
+        checks["witness_default_compliance"] = "PASS" if rule.get("Mode") == "COMPLIANCE" else "FAIL"
+        # Evidence that IAM can inspect the historical record; never use current HEAD alone.
+        history = s3.list_object_versions(**owner, Prefix="witness/v1/", MaxKeys=1)
+        checks["witness_history_list_permission"] = "PASS" if "IsTruncated" in history else "FAIL"
+        # Explicit Deny without condition on deletion of object/versions is a useful
+        # guardrail. It is not proof of administrative independence or unchanged IAM.
+        document = json.loads(s3.get_bucket_policy(**owner)["Policy"])
+        statements = document.get("Statement", [])
+        if isinstance(statements, dict):
+            statements = [statements]
+        required = {"s3:DeleteObject", "s3:DeleteObjectVersion"}
+        bucket_resource = f"arn:aws:s3:::{bucket}/*"
+        def is_deny(statement):
+            actions = statement.get("Action", [])
+            resources = statement.get("Resource", [])
+            if isinstance(actions, str): actions = [actions]
+            if isinstance(resources, str): resources = [resources]
+            return (statement.get("Effect") == "Deny" and
+                    statement.get("Principal") == "*" and
+                    not statement.get("Condition") and
+                    required.issubset(set(actions)) and
+                    bucket_resource in resources)
+        checks["witness_delete_policy"] = "PASS" if any(is_deny(v) for v in statements) else "FAIL"
         pab = s3.get_public_access_block(**owner)["PublicAccessBlockConfiguration"]
         checks["witness_public_access_block"] = "PASS" if all(pab.get(k) is True for k in
            ("BlockPublicAcls", "IgnorePublicAcls", "BlockPublicPolicy", "RestrictPublicBuckets")) else "FAIL"
