@@ -112,5 +112,27 @@ class RealCloudLedgerAdversarialGates(unittest.TestCase):
         self.assertEqual(self.ledger.reserve(*self.args)["decision"], "HOLD")
 
 
+    def test_a09_alias_witness_key_must_not_authorize(self):
+        # A mutable DynamoDB pointer must not select a different S3 key,
+        # even when that object holds byte-identical evidence.
+        import copy
+        self.assertEqual(self.ledger.reserve(*self.args)["decision"], "WITNESSED")
+        pk = self.ledger._pk(*self.args[1:4])
+        original_key = next(iter(self.s3.objects))
+        alias = "witness/v1/unrelated-reservation.json"
+        self.s3.objects[alias] = copy.deepcopy(self.s3.objects[original_key])
+        self.ddb.records[pk]["witness_key"]["S"] = alias
+        self.assertEqual(self.ledger.status(*self.args[1:4],
+                         identity=self.args[0])["decision"], "HOLD")
+
+    def test_a10_malformed_ledger_identity_field_fails_closed(self):
+        # Malformed storage response must be HOLD, not server exception.
+        self.assertEqual(self.ledger.reserve(*self.args)["decision"], "WITNESSED")
+        pk = self.ledger._pk(*self.args[1:4])
+        self.ddb.records[pk]["identity"] = "not-an-attribute-value"
+        self.assertEqual(self.ledger.status(*self.args[1:4],
+                         identity=self.args[0])["decision"], "HOLD")
+
+
 if __name__ == "__main__":
     unittest.main()
