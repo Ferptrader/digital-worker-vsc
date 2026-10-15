@@ -18,7 +18,7 @@ class SecurityHardening(unittest.TestCase):
         self.client_b=Ed25519PrivateKey.generate()
         self.anchor_key=Ed25519PrivateKey.generate()
         self.db,self.s3=FakeDDB(),FakeS3()
-        self.ledger=CloudLedger(self.db,self.s3,"reservation-test","witness-test")
+        self.ledger=CloudLedger(self.db,self.s3,"reservation-test","witness-test",expected_bucket_owner="222222222222")
         principals={"client-a":{"public_key":pub(self.client_a),"tenant":"same-tenant","actions":["reserve","status"],"operations":["extract_document"]},
                     "client-b":{"public_key":pub(self.client_b),"tenant":"same-tenant","actions":["reserve","status"],"operations":["extract_document"]}}
         self.anchor=Anchor(self.ledger,principals,self.anchor_key)
