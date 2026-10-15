@@ -20,7 +20,7 @@ class SignedEnvelopeCloud(unittest.TestCase):
         self.client_key=Ed25519PrivateKey.generate()
         self.anchor_key=Ed25519PrivateKey.generate()
         self.ddb=FakeDDB();self.s3=FakeS3()
-        ledger=CloudLedger(self.ddb,self.s3,"synthetic-table","synthetic-witness-bucket")
+        ledger=CloudLedger(self.ddb,self.s3,"synthetic-table","synthetic-witness-bucket",expected_bucket_owner="222222222222")
         principals={"synthetic-client":{"public_key":pub(self.client_key),"tenant":"tenant-one",
                                          "actions":["reserve","status"],"operations":["extract_document"]}}
         self.anchor=Anchor(ledger,principals,self.anchor_key)
