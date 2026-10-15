@@ -14,7 +14,7 @@ class RaceAndRecoveryTests(unittest.TestCase):
         self.args = ("client-001", "tenant-001", "extract_document",
                      "request-0000000000001", "a" * 64, 1792093200)
 
-    def test_preflight_toctou_delete_marker_returns_hold(self):
+    def test_preflight_toctou_exposes_simulator_gap(self):
         # Inject privileged history mutation just after the preflight list.
         original = self.s3.list_object_versions
         pk = self.ledger._pk(self.args[1], self.args[2], self.args[3])
@@ -27,6 +27,9 @@ class RaceAndRecoveryTests(unittest.TestCase):
         # The FakeS3 put is not a faithful S3 delete-marker emulator.
         # Assert only that the simulator can expose this missing semantic.
         self.assertEqual(self.ledger.reserve(*self.args)["decision"], "WITNESSED")
+        # This is an EXPECTED GAP, not a passing security assertion.
+        self.assertIn(key, self.s3.hidden_current)
+        self.assertEqual(len(self.db.records), 1)
 
     def test_failed_witness_write_does_not_retry_blindly(self):
         self.s3.fail_write = True
