@@ -55,7 +55,21 @@ class FakeS3:
         self.fail_head=False
         self.fail_read=False
         self.invalid_retention=False
+        self.owner="222222222222"
+        self.fail_versions=False
+        self.hidden_current=set()
+    def _verify_owner(self, kwargs):
+        if kwargs.get("ExpectedBucketOwner") != self.owner:
+            raise failure("AccessDenied")
+    def list_object_versions(self, **kwargs):
+        self._verify_owner(kwargs)
+        if self.fail_versions: raise failure("AccessDenied")
+        prefix=kwargs["Prefix"]
+        versions=[{"Key":k,"VersionId":v["version"]} for k,v in self.objects.items() if k.startswith(prefix)]
+        markers=[{"Key":k,"VersionId":"marker-1"} for k in self.hidden_current if k.startswith(prefix)]
+        return {"IsTruncated":False,"Versions":versions,"DeleteMarkers":markers}
     def put_object(self, **kwargs):
+        self._verify_owner(kwargs)
         if self.fail_write: raise failure("AccessDenied")
         assert kwargs["ObjectLockMode"] == "COMPLIANCE"
         assert kwargs["IfNoneMatch"] == "*"
@@ -68,12 +82,14 @@ class FakeS3:
                                  "mode":kwargs["ObjectLockMode"],"until":kwargs["ObjectLockRetainUntilDate"]}
             return {"VersionId":version}
     def head_object(self, **kwargs):
+        self._verify_owner(kwargs)
         if self.fail_head: raise failure("ServiceUnavailable")
         x=self.objects[kwargs["Key"]]
         if kwargs["VersionId"] != x["version"]:raise failure("NoSuchVersion")
         return {"ObjectLockMode": "GOVERNANCE" if self.invalid_retention else x["mode"],
                 "ObjectLockRetainUntilDate":x["until"]}
     def get_object(self, **kwargs):
+        self._verify_owner(kwargs)
         if self.fail_read: raise failure("AccessDenied")
         x=self.objects[kwargs["Key"]]
         if kwargs["VersionId"] != x["version"]:raise failure("NoSuchVersion")
@@ -83,7 +99,7 @@ class FakeS3:
 class CloudContract(unittest.TestCase):
     def setUp(self):
         self.ddb=FakeDDB();self.s3=FakeS3()
-        self.ledger=CloudLedger(self.ddb,self.s3,"lab-reservation-table","separate-audit-account-bucket")
+        self.ledger=CloudLedger(self.ddb,self.s3,"lab-reservation-table","separate-audit-account-bucket",expected_bucket_owner="222222222222")
         self.dig="a"*64;self.now=1792093200
         self.args=("lab-client","tenant-one","extract_document","synthetic-request-00000001",self.dig,self.now)
     def reserve(self): return self.ledger.reserve(*self.args)
