@@ -99,6 +99,15 @@ class CloudLedger:
         # cross-service transaction or proof against concurrent privileged
         # tampering of both stores. Production still requires reconciliation
         # and an independently enforced fencing/authorization boundary.
+        # Existing reservations must retain ordinary idempotent semantics.
+        # Historical reconciliation only applies if the authoritative row
+        # really is absent; otherwise duplicates would incorrectly HOLD.
+        try:
+            existing = self._get(pk)
+        except (ClientError, BotoCoreError, OSError):
+            return {"decision": "HOLD", "reason": "RESERVATION_READ_UNAVAILABLE"}
+        if existing is not None:
+            return self._verdict(existing, digest, identity)
         historical = self._status_without_db_row(pk)
         if historical["decision"] != "NOT_FOUND":
             return historical
