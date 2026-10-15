@@ -97,6 +97,20 @@ class CloudLedger:
                 "request_id": av(request_id), "identity": av(identity),
                 "digest": av(digest), "state": av("PENDING_WITNESS"),
                 "witness_key": av(key), "created_at": {"N": str(now)}}
+        # A DynamoDB row can be removed while a retained S3 version survives.
+        # If the current S3 version is a delete marker, IfNoneMatch='*'
+        # alone does not prove that this request_id has never been reserved.
+        # Check the durable historical witness BEFORE any new DDB/S3 write.
+        try:
+            prior = self._get(pk)
+            if prior is not None:
+                return self._verdict(prior, digest, identity)
+            history = self._status_without_db_row(pk)
+            if history.get("decision") != "NOT_FOUND":
+                return {"decision": "HOLD", "reason": "PREEXISTING_OR_UNVERIFIED_WITNESS"}
+        except (ClientError, BotoCoreError, OSError, ValueError, TypeError):
+            return {"decision": "HOLD", "reason": "PRE_RESERVATION_CHECK_FAILED"}
+
         try:
             self.ddb.put_item(TableName=self.table, Item=item,
                               ConditionExpression="attribute_not_exists(pk)")
