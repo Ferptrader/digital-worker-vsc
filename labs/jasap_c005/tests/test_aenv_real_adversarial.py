@@ -84,5 +84,33 @@ class RealCloudLedgerAdversarialGates(unittest.TestCase):
         self.assertNotIn("gxp_approval", decision)
 
 
+    def test_a05_tampered_reservation_tenant_must_hold(self):
+        self.assertEqual(self.ledger.reserve(*self.args)["decision"], "WITNESSED")
+        pk = self.ledger._pk(*self.args[1:4])
+        self.ddb.records[pk]["tenant"]["S"] = "forged-tenant"
+        result = self.ledger.status(*self.args[1:4], identity=self.args[0])
+        self.assertEqual(result["decision"], "HOLD", result)
+
+    def test_a06_tampered_reservation_operation_must_hold(self):
+        self.assertEqual(self.ledger.reserve(*self.args)["decision"], "WITNESSED")
+        pk = self.ledger._pk(*self.args[1:4])
+        self.ddb.records[pk]["operation"]["S"] = "forged-operation"
+        result = self.ledger.status(*self.args[1:4], identity=self.args[0])
+        self.assertEqual(result["decision"], "HOLD", result)
+
+    def test_a07_tampered_reservation_timestamp_must_hold(self):
+        self.assertEqual(self.ledger.reserve(*self.args)["decision"], "WITNESSED")
+        pk = self.ledger._pk(*self.args[1:4])
+        self.ddb.records[pk]["created_at"]["N"] = "1792093201"
+        result = self.ledger.status(*self.args[1:4], identity=self.args[0])
+        self.assertEqual(result["decision"], "HOLD", result)
+
+    def test_a08_reference_duplicate_and_missing_witness(self):
+        self.assertEqual(self.ledger.reserve(*self.args)["decision"], "WITNESSED")
+        self.assertEqual(self.ledger.reserve(*self.args)["decision"], "DUPLICATE")
+        self.s3.objects.clear()
+        self.assertEqual(self.ledger.reserve(*self.args)["decision"], "HOLD")
+
+
 if __name__ == "__main__":
     unittest.main()
