@@ -52,6 +52,8 @@ class CloudLedger:
             if item["state"]["S"] != "WITNESSED":
                 return False
             key = item["witness_key"]["S"]
+            if key != f'witness/v1/{item["pk"]["S"]}.json':
+                return False
             version = item["witness_version"]["S"]
             expected_sha = item["witness_digest"]["S"]
             metadata = self.s3.head_object(Bucket=self.bucket, Key=key, VersionId=version,
@@ -64,20 +66,39 @@ class CloudLedger:
             remote = self.s3.get_object(Bucket=self.bucket, Key=key, VersionId=version,
                                         ExpectedBucketOwner=self.expected_bucket_owner)
             data = remote["Body"].read()
-            return hashlib.sha256(data).hexdigest() == expected_sha and (
-                json.loads(data).get("pk") == item["pk"]["S"] and
-                json.loads(data).get("digest") == item["digest"]["S"] and
-                json.loads(data).get("identity") == item["identity"]["S"]
-            )
+            witness = json.loads(data)
+            if not isinstance(witness, dict):
+                return False
+            expected = {
+                "contract": "JASAP-C003-RESERVATION-v1",
+                "pk": item["pk"]["S"],
+                "tenant": item["tenant"]["S"],
+                "operation": item["operation"]["S"],
+                "request_id": item["request_id"]["S"],
+                "identity": item["identity"]["S"],
+                "digest": item["digest"]["S"],
+                "created_at": int(item["created_at"]["N"]),
+            }
+            return (hashlib.sha256(data).hexdigest() == expected_sha
+                    and witness == expected
+                    and item["pk"]["S"] == self._pk(
+                        expected["tenant"], expected["operation"], expected["request_id"]))
         except (KeyError, ValueError, TypeError, json.JSONDecodeError, ClientError, BotoCoreError, OSError):
             return False
 
     def _verdict(self, item: dict | None, digest: str | None = None, identity: str | None = None) -> dict:
         if item is None:
             return {"decision": "HOLD", "reason": "MISSING_RESERVATION_AFTER_CONFLICT"}
-        if identity is not None and item.get("identity", {}).get("S") != identity:
+        # Malformed database values are untrusted and must not cause an
+        # uncontrolled exception or a false-positive duplicate/found result.
+        if not isinstance(item, dict) or not all(
+            isinstance(item.get(k), dict) and isinstance(item[k].get("S"), str)
+            for k in ("identity", "digest", "pk", "witness_key", "state")
+        ):
+            return {"decision": "HOLD", "reason": "RESERVATION_RECORD_INVALID"}
+        if identity is not None and item["identity"]["S"] != identity:
             return {"decision": "DENIED", "reason": "IDENTITY_MISMATCH"}
-        if digest is not None and item.get("digest", {}).get("S") != digest:
+        if digest is not None and item["digest"]["S"] != digest:
             return {"decision": "CONFLICT", "reason": "IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_DIGEST"}
         if not self._verify_witness(item):
             return {"decision": "HOLD", "reason": "WITNESS_NOT_VERIFIED"}
@@ -92,6 +113,25 @@ class CloudLedger:
         if not isinstance(digest, str) or not HEX64.fullmatch(digest) or type(now) is not int:
             return {"decision": "DENIED", "reason": "INVALID_DIGEST_OR_TIME"}
         pk = self._pk(tenant, operation, request_id)
+        # Historical WORM evidence is a mandatory precondition even when the
+        # DynamoDB reservation has been deleted.  A missing/unavailable or
+        # incomplete S3 version listing must never become a fresh reservation.
+        # NOTE: this is a fail-closed laboratory gate, not an atomic
+        # cross-service transaction or proof against concurrent privileged
+        # tampering of both stores. Production still requires reconciliation
+        # and an independently enforced fencing/authorization boundary.
+        # Existing reservations must retain ordinary idempotent semantics.
+        # Historical reconciliation only applies if the authoritative row
+        # really is absent; otherwise duplicates would incorrectly HOLD.
+        try:
+            existing = self._get(pk)
+        except (ClientError, BotoCoreError, OSError):
+            return {"decision": "HOLD", "reason": "RESERVATION_READ_UNAVAILABLE"}
+        if existing is not None:
+            return self._verdict(existing, digest, identity)
+        historical = self._status_without_db_row(pk)
+        if historical["decision"] != "NOT_FOUND":
+            return historical
         key = f"witness/v1/{pk}.json"  # one immutable version per reservation
         item = {"pk": av(pk), "tenant": av(tenant), "operation": av(operation),
                 "request_id": av(request_id), "identity": av(identity),
