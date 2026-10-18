@@ -2,10 +2,16 @@
 from __future__ import annotations
 import hashlib
 import json
+import re
 from pathlib import Path
 import sys
 
 ROOT = Path(__file__).resolve().parent
+
+def require(condition: bool, message: str) -> None:
+    """Always enforce conditions, including when Python runs with -O."""
+    if not condition:
+        raise ValueError(message)
 
 def load(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
@@ -44,14 +50,38 @@ def check_output_hashes(base: Path):
     if seen != allowed:
         raise ValueError("Missing output hash entry")
 
-def assert_gxp_blocked(res):
-    assert res["gxp_release_authorized"] is False
-    assert res["harness_authoritative_gate"] == "HOLD"
-    assert all(res["quality_gates"][k] == "HOLD" for k in ("G0", "G4", "G5"))
-    assert res["execution"]["oq_executed"] == 0
-    assert res["execution"]["harness_tests_executed"] == 0
-    assert res["execution"]["oq_planned"] == 16
-    assert res["execution"]["harness_tests_planned"] == 22
+def assert_gxp_blocked(res: dict, label: str) -> None:
+    require(res.get("gxp_release_authorized") is False,
+            f"{label}: GxP release must be explicitly false")
+    require(res.get("harness_authoritative_gate") == "HOLD",
+            f"{label}: authoritative harness gate must be HOLD")
+    gates = res.get("quality_gates", {})
+    require(isinstance(gates, dict) and all(gates.get(k) == "HOLD" for k in ("G0", "G4", "G5")),
+            f"{label}: G0/G4/G5 must remain HOLD")
+    execution = res.get("execution", {})
+    require(execution.get("oq_executed") == 0 and execution.get("harness_tests_executed") == 0,
+            f"{label}: no actual OQ/HT execution is authorized")
+    require(execution.get("oq_planned") == 16 and execution.get("harness_tests_planned") == 22,
+            f"{label}: expected planned test counts changed")
+
+
+def check_unit_test_run(reports: Path) -> None:
+    """Detect empty/partial unittest discovery even if process exit is 0."""
+    log = (reports / "tests.log").read_text(encoding="utf-8")
+    passed = re.findall(r"(?m)^test_[A-Za-z0-9_]+ \([^\r\n]+\) \.\.\. ok$", log)
+    require(len(passed) == 20, f"Expected 20 individual passing tests; got {len(passed)}")
+    require(re.search(r"(?m)^Ran 20 tests in [0-9.]+s$", log) is not None,
+            "Unittest summary must report exactly 20 executed tests")
+    require(re.search(r"(?m)^OK$", log) is not None,
+            "Unittest summary is not OK")
+
+
+def check_negative_exit(reports: Path) -> None:
+    raw = (reports / "negative_exit_code.txt").read_text(encoding="utf-8").strip()
+    # Original workflow logs NEGATIVE_EXIT_CODE=1; local reproduction may use just 1.
+    require(raw in ("1", "NEGATIVE_EXIT_CODE=1"),
+            "Expected structural negative test exit code 1")
+
 
 def main():
     if len(sys.argv) != 2:
@@ -59,20 +89,25 @@ def main():
         return 2
     reports=Path(sys.argv[1]).resolve()
     check_source()
+    check_unit_test_run(reports)
+    check_negative_exit(reports)
     good = load(reports / "clean" / "verification.json")
     bad = load(reports / "negative" / "verification.json")
     for name in ("clean", "negative"):
         check_output_hashes(reports/name)
-    for res in (good,bad):
-        assert_gxp_blocked(res)
-    assert good["source_integrity_status"] == "PASS"
-    assert good["documentary_structural_status"] == "PASS"
-    assert good["counts"]["checks_fail"] == 0
-    assert good["counts"]["findings"] == 0
-    assert good["counts"]["traces"] == 16
-    assert bad["documentary_structural_status"] == "FAIL"
-    assert bad["comparisons"]["export"]["status"] == "FAIL"
-    assert any(x["id"] == "CMP-DIFF" for x in bad["findings"])
+    for label, res in (("clean", good), ("negative", bad)):
+        assert_gxp_blocked(res, label)
+    require(good.get("source_integrity_status") == "PASS", "Clean fixture integrity failure")
+    require(good.get("documentary_structural_status") == "PASS", "Clean structural verification failure")
+    counts = good.get("counts", {})
+    require(counts.get("checks_fail") == 0 and counts.get("findings") == 0 and counts.get("traces") == 16,
+            "Clean verification findings or trace count changed")
+    require(bad.get("documentary_structural_status") == "FAIL", "Negative fixture falsely marked PASS")
+    comparisons = bad.get("comparisons", {})
+    require(isinstance(comparisons, dict) and comparisons.get("export", {}).get("status") == "FAIL",
+            "Negative export comparison not marked FAIL")
+    require(any(x.get("id") == "CMP-DIFF" for x in bad.get("findings", [])),
+            "Negative export tampering is not reported as CMP-DIFF")
     summary = (
       "# JARVIS HYB F2 — Inspecao tecnica do CI (SIM-EMS)\n\n"
       "- 20 testes unitarios: verificar `tests.log`\n"
