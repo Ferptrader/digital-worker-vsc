@@ -1,0 +1,16 @@
+{
+  "fixture_id": "SIM-EMS-20",
+  "fixture_revision": "v0.4",
+  "provenance": "SYNTHETIC_TEST_FIXTURE_NOT_GXP",
+  "declared_inputs": {
+    "requirements_json": {
+      "file": "sim_ems_v0.4.json",
+      "sha256": "25fa5b04877980fa5f0da995932f6df4f54f1043232c1fd75b93d7a41f991979"
+    },
+    "readings_csv": {
+      "file": "sim_ems_20_v0.4.csv",
+      "sha256": "6acdc53a26dd0b51685200d951e73522a5ecde01fbf469b45ef91753a34ab13c"
+    }
+  },
+  "intended_use": "Deterministic structural checks only; no OQ or formal GxP execution."
+}

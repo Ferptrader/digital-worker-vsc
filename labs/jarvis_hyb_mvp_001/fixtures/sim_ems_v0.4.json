@@ -1,0 +1,358 @@
+{
+  "URS": [
+    [
+      "URS-001",
+      "Aquisição",
+      "Registrar leituras de temperatura com identificador do sensor, valor, unidade, data/hora, fuso ou referência temporal e status.",
+      "Alta",
+      "RSK-001"
+    ],
+    [
+      "URS-002",
+      "Alarmes",
+      "Identificar valores fora da faixa configurada de 2,0 a 8,0 °C no simulador (limites apenas didáticos).",
+      "Alta",
+      "RSK-002"
+    ],
+    [
+      "URS-003",
+      "Alarmes",
+      "Registrar reconhecimento de alarme por usuário autenticado, data/hora e justificativa.",
+      "Alta",
+      "RSK-003"
+    ],
+    [
+      "URS-004",
+      "Acesso",
+      "Exigir conta individual para acesso e registrar tentativas de autenticação malsucedidas.",
+      "Alta",
+      "RSK-004"
+    ],
+    [
+      "URS-005",
+      "Acesso",
+      "Restringir alteração de limites e exclusão de registros conforme papéis previamente definidos.",
+      "Alta",
+      "RSK-004"
+    ],
+    [
+      "URS-006",
+      "Trilha de auditoria",
+      "Registrar cada alteração de limite com identificação da configuração, parâmetro, valores anterior e novo, usuário autenticado, data/hora com referência temporal, justificativa obrigatória e identificador do evento de alteração (contexto mínimo SIM-EMS).",
+      "Alta",
+      "RSK-005"
+    ],
+    [
+      "URS-007",
+      "Exportação",
+      "Exportar leituras do período incluindo, por registro: ID único do evento, ID do sensor/origem, valor, unidade, timestamp com fuso ou referência temporal, status e ID da configuração. Permitir reconciliação integral com a fonte sintética.",
+      "Alta",
+      "RSK-006"
+    ],
+    [
+      "URS-008",
+      "Recuperação",
+      "Permitir cópia e recuperação dos registros simulados em área isolada, demonstrando reconciliação integral de contagem, identificadores, conteúdo e metadados críticos em 20/20 registros do conjunto de referência.",
+      "Alta",
+      "RSK-007"
+    ],
+    [
+      "URS-009",
+      "Qualidade do dado",
+      "Identificar entrada inválida ou indisponibilidade de sensor sem registrar leitura inválida como válida.",
+      "Alta",
+      "RSK-008"
+    ],
+    [
+      "URS-010",
+      "Integração",
+      "Tratar retransmissões usando identificador único, evitando dupla contabilização de leituras.",
+      "Média",
+      "RSK-009"
+    ],
+    [
+      "URS-011",
+      "Relatórios",
+      "Filtrar relatório por período com fronteiras inclusivas e registros correspondentes.",
+      "Média",
+      "RSK-010"
+    ],
+    [
+      "URS-012",
+      "Configuração",
+      "Identificar versão do simulador e configuração vigente nos relatórios exportados.",
+      "Média",
+      "RSK-006"
+    ]
+  ],
+  "RISKS": [
+    [
+      "RSK-001",
+      "Leitura sem origem ou timestamp confiável",
+      "Compromete atribuição e reconstrução da série histórica.",
+      "Alta",
+      "CTRL-001",
+      "Campos obrigatórios e validação na persistência",
+      "OQ-001"
+    ],
+    [
+      "RSK-002",
+      "Excursão não sinalizada",
+      "Evento fora de limites pode passar despercebido.",
+      "Alta",
+      "CTRL-002",
+      "Comparação com limites configurados e evento de alarme",
+      "OQ-002"
+    ],
+    [
+      "RSK-003",
+      "Reconhecimento não rastreável",
+      "Não é possível identificar quem tratou ocorrência.",
+      "Alta",
+      "CTRL-003",
+      "Registro de reconhecimento com justificativa e timestamp",
+      "OQ-003"
+    ],
+    [
+      "RSK-004",
+      "Acesso ou alteração indevidos",
+      "Usuário ultrapassa seu perfil de autorização.",
+      "Alta",
+      "CTRL-004",
+      "Identificação individual, RBAC e negação registrada",
+      "OQ-004; OQ-005; OQ-013; OQ-016"
+    ],
+    [
+      "RSK-005",
+      "Alteração de limite sem histórico",
+      "Dificulta reconstrução de alteração crítica.",
+      "Alta",
+      "CTRL-005",
+      "Trilha de auditoria contextualizada por configuração, parâmetro, autor, timestamp, justificativa, valor anterior/novo e ID de evento",
+      "OQ-006"
+    ],
+    [
+      "RSK-006",
+      "Exportação incompleta ou sem contexto",
+      "Registro não pode ser corretamente interpretado.",
+      "Alta",
+      "CTRL-006",
+      "Reconciliação de exportação: IDs e todos os campos críticos, 20/20 registros",
+      "OQ-007; OQ-012"
+    ],
+    [
+      "RSK-007",
+      "Restauração incompleta",
+      "Perda ou duplicação de registros ao recuperar cópia.",
+      "Alta",
+      "CTRL-007",
+      "Reconciliação integral de 20/20 registros e metadados após recuperação em área isolada",
+      "OQ-008"
+    ],
+    [
+      "RSK-008",
+      "Valor inválido tratado como legítimo",
+      "Medição incorreta pode orientar decisão.",
+      "Alta",
+      "CTRL-008",
+      "Validação, rejeição e estado INVALID",
+      "OQ-009; OQ-014"
+    ],
+    [
+      "RSK-009",
+      "Duplicação após reconexão",
+      "Leituras duplicadas distorcem tendência.",
+      "Média",
+      "CTRL-009",
+      "Deduplicação idempotente por ID de mensagem",
+      "OQ-010"
+    ],
+    [
+      "RSK-010",
+      "Relatório com intervalo incorreto",
+      "Omissão ou inclusão indevida de medições.",
+      "Média",
+      "CTRL-010",
+      "Filtragem consistente e verificação de fronteiras",
+      "OQ-011; OQ-015"
+    ]
+  ],
+  "OQ": [
+    [
+      "OQ-001",
+      "URS-001",
+      "RSK-001",
+      "Integridade dos campos de leitura",
+      "Conjunto sintético de 3 leituras disponíveis.",
+      "Carregar 3 leituras identificadas; consultar a visualização e a exportação.",
+      "Cada leitura contém ID do sensor, ID do evento, valor, °C, carimbo de data/hora, referência temporal e status válidos.",
+      "Captura da tela + CSV exportado + lista de IDs.",
+      "Alta"
+    ],
+    [
+      "OQ-002",
+      "URS-002",
+      "RSK-002",
+      "Alarme nas fronteiras da faixa",
+      "Faixa didática 2,0 a 8,0 °C configurada.",
+      "Injetar 1,9; 2,0; 8,0; 8,1 °C e registrar alarmes.",
+      "Alarmes em 1,9 e 8,1; sem alarme por excursão em 2,0 e 8,0; eventos vinculados aos IDs.",
+      "Logs de eventos + capturas + tabela valor/alarme.",
+      "Alta"
+    ],
+    [
+      "OQ-003",
+      "URS-003",
+      "RSK-003",
+      "Reconhecimento rastreável",
+      "Alarme não reconhecido; usuário OP-01 autenticado.",
+      "Reconhecer primeiro sem justificativa; depois informar justificativa e confirmar.",
+      "Sem justificativa, rejeitar; com justificativa, registrar usuário OP-01, data/hora, motivo e ID do alarme.",
+      "Histórico do alarme + registro da tentativa inválida.",
+      "Alta"
+    ],
+    [
+      "OQ-004",
+      "URS-004",
+      "RSK-004",
+      "Identificação e falha de login",
+      "Conta de teste OP-01 ativa.",
+      "Efetuar uma autenticação válida e uma tentativa com senha incorreta.",
+      "Sessão válida identifica OP-01; tentativa inválida rejeitada e registrada sem expor senha.",
+      "Registro de autenticação redigido + capturas.",
+      "Alta"
+    ],
+    [
+      "OQ-005",
+      "URS-005",
+      "RSK-004",
+      "RBAC impede alteração por visualizador",
+      "Conta VIEW-01 com perfil leitura.",
+      "Acessar função de alteração de limites e tentar salvar novo valor.",
+      "Alteração negada; configuração permanece igual; tentativa registrada quando previsto na especificação.",
+      "Captura + configurações antes/depois.",
+      "Alta"
+    ],
+    [
+      "OQ-006",
+      "URS-006",
+      "RSK-005",
+      "Trilha de alteração do limite",
+      "SIM-EMS fictício; ADMIN-01 autorizado; CFG-TEST-01 com limite superior inicial 8,0 °C; justificativa de teste CHG-TEST-006 preparada; audit trail habilitado apenas como comportamento especificado.",
+      "1. Identificar configuração CFG-TEST-01 e parâmetro LIMITE_SUPERIOR. 2. Registrar estado inicial 8,0 °C. 3. Solicitar alteração a 8,5 °C com justificativa CHG-TEST-006. 4. Consultar evento de alteração por ID e conferir cada campo com a solicitação.",
+      "Um evento de audit trail associa CFG-TEST-01, LIMITE_SUPERIOR, usuário ADMIN-01, data/hora e referência temporal explícita, 8,0 °C → 8,5 °C, justificativa CHG-TEST-006 e ID exclusivo do evento. Falta ou divergência de qualquer campo = Não conforme.",
+      "Configuração antes/depois, pedido de alteração, ID do evento e extrato integral do audit trail com comparação campo a campo.",
+      "Alta"
+    ],
+    [
+      "OQ-007",
+      "URS-007",
+      "RSK-006",
+      "Exportação completa de 20 registros",
+      "Dataset sintético DATASET-SIM-EMS-20-v0.4 congelado, com 20 registros identificados; mapa de campos e convenção temporal documentados; caminho de exportação autorizado no ensaio futuro.",
+      "1. Selecionar intervalo que contenha os 20 registros de referência. 2. Exportar CSV. 3. Verificar cabeçalho e unicidade dos IDs. 4. Comparar cada ID e os sete campos obrigatórios com a fonte sintética, 20/20, sem amostragem.",
+      "Exatamente 20 registros de dados, 20 IDs distintos; equivalência 20/20 para id_evento, id_sensor, valor_c, unidade, timestamp_iso8601, status e id_configuracao. Nenhuma coluna exigida ausente, nenhum campo nulo indevido ou divergência; timestamps preservam referência temporal.",
+      "Dataset CSV congelado e hash; exportação obtida futuramente; mapa de campos; reconciliação 20/20 assinável; registro de desvios.",
+      "Alta"
+    ],
+    [
+      "OQ-008",
+      "URS-008",
+      "RSK-007",
+      "Backup e restauração reconciliada",
+      "Dataset DATASET-SIM-EMS-20-v0.4 conhecido e congelado; backup autorizado e área de restauração isolada identificada; campos críticos descritos no mapa de dados.",
+      "1. Registrar dataset de referência e hash. 2. Criar backup controlado. 3. Restaurar em área isolada. 4. Comparar contagem e conjunto completo de IDs. 5. Reconciliar 20/20 registros, campo a campo. 6. Verificar duplicatas e erros reportados.",
+      "20/20 IDs únicos e presentes após restauração; para cada um, igualdade exata de id_sensor, valor_c, unidade, timestamp_iso8601, status e id_configuracao; nenhum registro extra, omissão ou alteração; log de backup/restore identificável. Diferenças geram Não conforme/desvio.",
+      "Dataset de referência e hash; log backup/restore; exportação restaurada; reconciliação 20/20 com diferenças; evidência de isolamento do ambiente.",
+      "Alta"
+    ],
+    [
+      "OQ-009",
+      "URS-009",
+      "RSK-008",
+      "Valor inválido não contado como válido",
+      "Entrada sintética controlada.",
+      "Enviar valor textual ABC e valor vazio ao simulador.",
+      "Entradas inválidas são rejeitadas ou sinalizadas INVALID; não aparecem como medições válidas em relatório.",
+      "Log de validação + consultas ao relatório.",
+      "Alta"
+    ],
+    [
+      "OQ-010",
+      "URS-010",
+      "RSK-009",
+      "Idempotência na retransmissão",
+      "Leitura ID EVT-010 gravada uma vez.",
+      "Reenviar 3 vezes a mesma leitura ID EVT-010 após reconexão simulada.",
+      "A série de medições contabiliza EVT-010 uma única vez; reenvios são detectáveis em diagnóstico.",
+      "Contagem antes/depois + evento de duplicidade.",
+      "Média"
+    ],
+    [
+      "OQ-011",
+      "URS-011",
+      "RSK-010",
+      "Relatório por intervalo",
+      "Registros em 10:00:00, 10:05:00, 10:10:00 e 10:15:00.",
+      "Consultar intervalo inclusivo entre 10:05:00 e 10:10:00.",
+      "Somente registros de 10:05:00 e 10:10:00 são incluídos; limites da consulta ficam registrados.",
+      "Relatório + conjunto de teste.",
+      "Média"
+    ],
+    [
+      "OQ-012",
+      "URS-012",
+      "RSK-006",
+      "Versão/configuração no relatório",
+      "Identificação fictícia SIM-EMS 0.1 e CFG-TEST-01.",
+      "Gerar relatório e localizar identificação de versão e configuração.",
+      "Relatório contém SIM-EMS 0.1, CFG-TEST-01 e data/hora de geração.",
+      "Relatório exportado.",
+      "Média"
+    ],
+    [
+      "OQ-013",
+      "URS-005",
+      "RSK-004",
+      "Sessão encerrada não concede alteração",
+      "Operador autenticado e sessão encerrável.",
+      "Efetuar logout e repetir ação protegida com sessão anterior.",
+      "Ação negada; novo login exigido; nenhuma configuração alterada.",
+      "Capturas + log da tentativa.",
+      "Alta"
+    ],
+    [
+      "OQ-014",
+      "URS-009",
+      "RSK-008",
+      "Sensor indisponível sinalizado",
+      "Sensor S-02 habilitado.",
+      "Simular desconexão S-02 e gerar relatório.",
+      "S-02 apresenta estado indisponível; não é gerado valor válido fabricado para a janela.",
+      "Linha temporal e relatório de status.",
+      "Alta"
+    ],
+    [
+      "OQ-015",
+      "URS-011",
+      "RSK-010",
+      "Consulta sem registros",
+      "Período sintético sem medições.",
+      "Consultar janela sem medições.",
+      "Relatório informa zero registros sem preencher registros fictícios.",
+      "Relatório da janela vazia.",
+      "Média"
+    ],
+    [
+      "OQ-016",
+      "URS-005",
+      "RSK-004",
+      "Exclusão indevida bloqueada",
+      "Perfil OP-01 sem permissão para excluir.",
+      "Solicitar exclusão do evento EVT-001 via interface de teste.",
+      "Operação negada; EVT-001 preservado; nenhuma trilha histórica removida.",
+      "Consulta antes/depois + log de negação.",
+      "Alta"
+    ]
+  ]
+}
